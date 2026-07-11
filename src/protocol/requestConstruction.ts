@@ -8,6 +8,7 @@ interface RequestInput {
   action?: JsonObject
   requestMapping?: Record<string, JsonObject>
   row?: JsonObject
+  formValues?: JsonObject
 }
 
 type RequestResult =
@@ -64,6 +65,23 @@ export function buildRequest(input: RequestInput): RequestResult {
     return {
       ok: true,
       request: { method: String(dataRef.method ?? 'GET'), url: serialized.url, body: null },
+    }
+  }
+
+  if (input.kind === 'formAction') {
+    const action = input.action ?? {}
+    const formValues = input.formValues ?? {}
+    const bodyMapping = action.bodyMapping as Record<string, string> | undefined
+    const body = bodyMapping
+      ? Object.fromEntries(
+          Object.entries(bodyMapping).map(([source, target]) => [target, formValues[source]]),
+        )
+      : { ...formValues }
+    const serialized = serializeQuery(String(action.url), [])
+    if (!serialized.ok) return serialized
+    return {
+      ok: true,
+      request: { method: String(action.method), url: serialized.url, body },
     }
   }
 
